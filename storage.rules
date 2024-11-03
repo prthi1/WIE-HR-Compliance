@@ -1,0 +1,23 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{companyID} {
+      function isSuperAdmin() {
+        return request.auth != null && request.auth.token.position == "SuperAdmin";
+      }
+      function hasMatchingCompanyID(companyID) {
+        return request.auth != null && request.auth.token.companyID == companyID;
+      }
+      function isAdmin() {
+        return request.auth != null && request.auth.token.position == "Administrator";
+      }
+      function isUser(email) {
+        return request.auth != null && request.auth.token.email == email;
+      }
+
+      match /{email}/{fileName} {
+        allow read, write: if isSuperAdmin() || (isAdmin() && hasMatchingCompanyID(companyID)) || (isUser(email) && hasMatchingCompanyID(companyID));
+      }
+    }
+  }
+}

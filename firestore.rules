@@ -1,0 +1,38 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSuperAdmin() {
+        return request.auth != null && request.auth.token.position == "SuperAdmin";
+    }
+    
+    function isUser(email) {
+        return request.auth != null && request.auth.token.email == email;
+    }
+
+    function isAdmin() {
+        return request.auth != null &&
+            request.auth.token.position == "Administrator" &&
+            (resource == null) || (request.auth.token.companyID == resource.data.companyID);
+    }
+
+    match /users/{email} {
+      allow write: if isSuperAdmin() || isAdmin();
+      allow read: if isSuperAdmin() || isAdmin() || isUser(email);
+    }
+
+    function hasMatchingCompanyID(companyID) {
+        return request.auth != null && request.auth.token.companyID == companyID;
+    }
+
+    match /companies/{companyID} {
+        allow create, delete: if isSuperAdmin();
+        allow get, list, update: if isSuperAdmin() || hasMatchingCompanyID(companyID);
+
+        match /{subcollection=**} {
+            allow get, list, create, update, delete: if isSuperAdmin() || hasMatchingCompanyID(companyID);
+        }
+    }
+  }
+}
